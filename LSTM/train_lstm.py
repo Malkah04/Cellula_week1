@@ -7,13 +7,13 @@ from data_preprocessing import word_to_idx, x_test_tensor, x_train_tensor, y_tes
 
 vocab_size = len(word_to_idx)
 
-embedding_dim = 128
-hidden_dim = 128
-num_classes = 6
+embedding_dim = 32
+hidden_dim = 32
+num_classes = 7
 
 batch_size = 32
 learning_rate = 0.001
-num_epochs = 10
+num_epochs = 20
 
 x_train = x_train_tensor
 y_train =y_train_tensor
@@ -34,9 +34,10 @@ print("\nClass weights:", class_weights)
 train_dataset = TensorDataset(x_train, y_train)
 test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
 
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle =True)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler =sampler)
 train_eval_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
 
 class LSTMclassifier(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, num_classes):
@@ -93,7 +94,7 @@ class LSTMclassifier(nn.Module):
 
 model = LSTMclassifier(vocab_size, embedding_dim, hidden_dim, num_classes)
 criterion = nn.CrossEntropyLoss(weight =class_weights)
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-2)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=1e-4)
 
 for epoch in range(num_epochs):
     model.train()
@@ -103,14 +104,16 @@ for epoch in range(num_epochs):
         outputs = model(x_batch)
         loss = criterion(outputs, y_batch)
         loss.backward()
-        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         total_train_loss += loss.item()
 
     average_train_loss = total_train_loss / len(train_loader)
     print(f"Epoch [{epoch + 1}/{num_epochs}] Train Loss: {average_train_loss:.4f}")
 
-class_names = ["Safe", "Violent Crimes", "Non-Violent Crimes", "unsafe", "Unknown S-Type", "Sex-Related Crimes"]
+class_names = ["Safe", "Violent Crimes", "Non-Violent Crimes", "unsafe","Unknown S-Type","Sex-Related Crimes","Suicide & Self-Harm"]
+
+
 
 def evaluate_model(model, data_loader, dataset_name):
     model.eval()
