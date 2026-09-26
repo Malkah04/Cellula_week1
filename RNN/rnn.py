@@ -7,13 +7,13 @@ from data_preprocessing import word_to_idx, x_test_tensor, x_train_tensor, y_tes
 
 vocab_size = len(word_to_idx)
 
-embedding_dim = 128
-hidden_dim = 128
-num_classes = 6
+embedding_dim = 64
+hidden_dim = 64
+num_classes = 7
 
 batch_size = 32
-learning_rate = 0.0001
-num_epochs = 10
+learning_rate = 0.001
+num_epochs = 20
 
 x_train = x_train_tensor
 y_train =y_train_tensor
@@ -34,7 +34,7 @@ sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(y_train)
 train_dataset = TensorDataset(x_train, y_train)
 test_dataset = TensorDataset(x_test_tensor, y_test_tensor)
 
-train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=sampler)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle =True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
@@ -51,34 +51,24 @@ class RNNclassifier(nn.Module):
             nonlinearity="tanh"
             )
         self.fc = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
+            nn.Linear(hidden_dim, 32),
             nn.LeakyReLU(), 
             nn.Dropout(0.5),
-            nn.Linear(64, num_classes)
+            nn.Linear(32, num_classes)
             )
 
-    # def forward(self, x):
-    #     padding_mask = (x != 0).float()
-    #     x = self.embedding(x)
-    #     rnn_out, _ = self.rnn(x)
-    #     mask = padding_mask.unsqueeze(-1)
-    #     masked_rnn_out = rnn_out * mask
-    #     summed = masked_rnn_out.sum(dim=1)
-    #     token_count = mask.sum(dim=1).clamp(min=1)
-    #     out = summed / token_count
-    #     return self.fc(out)
-
     def forward(self, x):
-            padding_mask = (x != 0)
-            x = self.embedding(x)
-            lstm_out, _ = self.lstm(x)
-    
-            mask = padding_mask.unsqueeze(-1)
-    
-            masked_for_max = lstm_out.masked_fill(~mask, -1e9)
-            max_pool = masked_for_max.max(dim=1).values
-    
-            return self.fc(max_pool)
+        padding_mask = (x != 0).float()
+        x = self.embedding(x)
+        rnn_out, _ = self.rnn(x)
+        mask = padding_mask.unsqueeze(-1)
+        masked_rnn_out = rnn_out * mask
+        summed = masked_rnn_out.sum(dim=1)
+        token_count = mask.sum(dim=1).clamp(min=1)
+        out = summed / token_count
+        return self.fc(out)
+
+
 
 model = RNNclassifier(vocab_size=vocab_size, embedding_dim=embedding_dim, hidden_dim=hidden_dim, num_classes=num_classes)
 
@@ -123,8 +113,78 @@ print(f"Test Accuracy: {test_accuracy:.4f}")
 print(f"Test Macro F1: {test_macro_f1:.4f}")
 print(f"Test Weighted F1: {test_weighted_f1:.4f}")
 
-class_names = ["Safe", "Violent Crimes", "Non-Violent Crimes", "unsafe", "Unknown S-Type", "Sex-Related Crimes"]
+class_names = ["Safe", "Violent Crimes", "Non-Violent Crimes", "unsafe","Unknown S-Type","Sex-Related Crimes","Suicide & Self-Harm"]
+
 
 print(confusion_matrix(all_labels, all_predictions, labels=list(range(num_classes))))
 
 print(classification_report(all_labels, all_predictions, labels=list(range(num_classes)), target_names=class_names, zero_division=0))
+
+
+model.eval()
+
+all_train_predictions = []
+all_train_labels = []
+total_train_loss = 0.0
+
+with torch.no_grad():
+    for x_batch, y_batch in train_loader:
+        outputs = model(x_batch)
+
+        loss = criterion(outputs, y_batch)
+        total_train_loss += loss.item()
+
+        predictions = torch.argmax(outputs, dim=1)
+
+        all_train_predictions.extend(predictions.cpu().numpy())
+        all_train_labels.extend(y_batch.cpu().numpy())
+
+train_loss = total_train_loss / len(train_loader)
+
+train_accuracy = accuracy_score(
+    all_train_labels,
+    all_train_predictions
+)
+
+train_macro_f1 = f1_score(
+    all_train_labels,
+    all_train_predictions,
+    average="macro",
+    zero_division=0
+)
+
+train_weighted_f1 = f1_score(
+    all_train_labels,
+    all_train_predictions,
+    average="weighted",
+    zero_division=0
+)
+
+train_cm = confusion_matrix(
+    all_train_labels,
+    all_train_predictions,
+    labels=list(range(num_classes))
+)
+
+print("\n" + "=" * 60)
+print("TRAIN RESULTS")
+print("=" * 60)
+
+print(f"Train Loss: {train_loss:.4f}")
+print(f"Train Accuracy: {train_accuracy:.4f}")
+print(f"Train Macro F1: {train_macro_f1:.4f}")
+print(f"Train Weighted F1: {train_weighted_f1:.4f}")
+
+print("\nTrain Confusion Matrix:")
+print(train_cm)
+
+print("\nTrain Classification Report:")
+print(
+    classification_report(
+        all_train_labels,
+        all_train_predictions,
+        labels=list(range(num_classes)),
+        target_names=class_names,
+        zero_division=0
+    )
+)
