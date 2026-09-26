@@ -354,17 +354,17 @@ This makes it easier to identify whether the model is performing well only on ma
 
 | Metric      | Result |
 | ----------- | -----: |
-| Accuracy    |    TBD |
-| Macro F1    |    TBD |
-| Weighted F1 |    TBD |
+| Accuracy    |    0.94 |
+| Macro F1    |    0.84 |
+| Weighted F1 |    0.94 |
 
 ### LSTM
 
 | Metric      | Result |
 | ----------- | -----: |
-| Accuracy    |    TBD |
-| Macro F1    |    TBD |
-| Weighted F1 |    TBD |
+| Accuracy    |    0.99 |
+| Macro F1    |    0.93 |
+| Weighted F1 |    0.98 |
 
 Detailed classification reports and confusion matrices will be included with the final experiment results.
 
